@@ -179,7 +179,7 @@ class VideoProcessor:
         
         df = pd.DataFrame(task_data)
         df.to_excel(self.videolingo_tasks_file, index=False)
-        logging.info(f"📋 Created VideoLingo task: {video_filename} -> Chinese (no dubbing)")
+        logging.info(f"📋 Created VideoLingo task: {video_filename} -> {settings.target_language} (no dubbing)")
 
     async def _run_videolingo_batch_processor(self) -> bool:
         """Run VideoLingo batch processor"""

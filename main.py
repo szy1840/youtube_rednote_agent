@@ -245,15 +245,21 @@ class ExcelHandler:
             workbook = load_workbook(self.excel_path)
             worksheet = workbook.active
             
-            # Update row 2, column 1 (B1 in Excel notation, but row 2 col 1 in 1-based indexing)
+            # Update row 2, column 1 (Video URL)
             worksheet.cell(row=2, column=1, value=video_url)
+            
+            # Update row 2, column 3 (Target Language) from config
+            worksheet.cell(row=2, column=3, value=settings.target_language)
+            
+            # Update row 2, column 4 (Dubbing) to disable dubbing
+            worksheet.cell(row=2, column=4, value=0)
             
             # Clear the status column (row 2, column 5) for new processing
             worksheet.cell(row=2, column=5, value="")
             
             # Save the workbook
             workbook.save(self.excel_path)
-            logging.info("✅ Excel file updated successfully")
+            logging.info(f"✅ Excel file updated successfully with target language '{settings.target_language}' and no dubbing")
             return True
             
         except Exception as e:
