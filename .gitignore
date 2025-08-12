@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.env
+.venv
+env/
+venv/
+
+# Project-specific
+# Keep directories but ignore their contents
+chrome_profiles/auto/*
+chrome_profiles/manual/*
+downloads/input/*
+downloads/processed/*
+
+# Logs and config files
+*.log
+client_secret_*.json
+youtube_token.json
+config.py
+cron_job.sh
+processed_videos/
+processed_videos.json
+video_attempts.json
+
+# Media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.backup
