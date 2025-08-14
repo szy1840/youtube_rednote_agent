@@ -158,27 +158,22 @@ class LLMClient:
     async def _summarize_with_openai(self, english_text: str, video_title: str, video_url: str) -> VideoSummaryContent:
         """Use OpenAI for video content summarization"""
         
-        prompt = f"""你是资深科技自媒体编辑。请基于以下YouTube视频的英文字幕内容，为小红书创作中文内容。
+        prompt = f"""你是精通商业、科技、AI创业的创业导师，也精通小红书文案编辑。请基于以下视频的字幕内容，创作小红书创作内容。
 
 原视频标题：{video_title}
 视频链接：{video_url}
 
 英文字幕内容：
-{english_text[:4000]}  # Limit to prevent token overflow
+{english_text}
 
-任务要求：
-1. **中文标题**：创作一个吸引眼球的中文标题（20字以内），要有情感共鸣和话题性
-2. **中文描述**：将视频核心内容翻译成流畅的中文，并适合小红书风格：
-   - 语调生动有趣，符合小红书用户喜好
-   - 适当添加emoji表情
-   - 要有话题感和互动性
-   - 保持原意的同时让内容更有吸引力
-   - 描述长度控制在100-800字之间
+要求：
+请根据视频内容，创作小红书标题和文案。要符合小红书用户喜好，吸引人，特别标题需要引流。
+
 
 请用以下JSON格式回复：
 {{
-  "title": "吸引人的中文标题",
-  "description": "详细的中文描述内容",
+  "title": "标题",
+  "description": "文案",
   "confidence": 0.95
 }}"""
 
