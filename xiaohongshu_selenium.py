@@ -1,18 +1,55 @@
-from pathlib import Path
-import time
+import asyncio
 import json
-import random
+import logging
+import os
+import pty
+import select
 import subprocess
+import sys
+import time
 import uuid
-import requests
+from pathlib import Path
+from typing import Optional, Dict, Any
+import re
+
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from webdriver_manager.chrome import ChromeDriverManager
+
 from config import settings
+
+def is_browser_window_closed_error(error: Exception) -> bool:
+    """
+    Check if the error is related to browser window being closed by user
+    """
+    error_str = str(error).lower()
+    browser_closed_indicators = [
+        'no such window',
+        'target window already closed',
+        'web view not found',
+        'window was closed',
+        'chrome not reachable',
+        'session deleted',
+        'invalid session id'
+    ]
+    
+    return any(indicator in error_str for indicator in browser_closed_indicators)
+
+def handle_browser_error(error: Exception, context: str = "") -> None:
+    """
+    Handle browser-related errors with appropriate user-friendly messages
+    """
+    if is_browser_window_closed_error(error):
+        print(f"🔄 用户关闭了浏览器窗口，程序正常退出")
+        print(f"💡 提示：如需继续操作，请重新运行程序")
+    else:
+        print(f"⚠️ {context} 发生错误: {error}")
 
 def sanitize_for_chromedriver(text: str) -> str:
     """Removes non-BMP characters that crash ChromeDriver on Windows."""
@@ -289,7 +326,7 @@ class XiaohongshuSelenium:
                 return False
             
         except Exception as e:
-            print(f"❌ Error during login process: {e}")
+            handle_browser_error(e, "登录过程")
             return False
     
     def switch_to_video_tab(self):
@@ -327,7 +364,7 @@ class XiaohongshuSelenium:
             return True
             
         except Exception as e:
-            print(f"❌ Error switching to video tab: {e}")
+            handle_browser_error(e, "切换到视频标签页")
             return False
 
     def upload_video_file(self, video_path):
@@ -362,7 +399,7 @@ class XiaohongshuSelenium:
             print("❌ Video upload timed out. Form fields did not become available.")
             return False
         except Exception as e:
-            print(f"❌ Video upload failed: {e}")
+            handle_browser_error(e, "上传视频文件")
             return False
 
     def handle_hashtag_suggestions(self, desc_element, hashtag_text):
@@ -534,7 +571,7 @@ class XiaohongshuSelenium:
                 print(f"   ✅ Title filled: {safe_title}")
                 
             except Exception as e:
-                print(f"   ❌ Error filling title: {e}")
+                handle_browser_error(e, "填写标题")
                 return False
             
             # Fill description with hashtag handling
@@ -592,14 +629,14 @@ class XiaohongshuSelenium:
                 print(f"   ✅ Description filled with hashtag handling ({len(safe_description)} characters)")
                 
             except Exception as e:
-                print(f"   ❌ Error filling description: {e}")
+                handle_browser_error(e, "填写描述")
                 return False
             
             print("✅ Form filled successfully!")
             return True
             
         except Exception as e:
-            print(f"❌ Error filling form manually: {e}")
+            handle_browser_error(e, "手动填写表单")
             return False
 
     def monitor_upload_and_publish(self, max_wait_minutes=120):
@@ -638,14 +675,14 @@ class XiaohongshuSelenium:
                     time.sleep(60)
                     
                 except Exception as e:
-                    print(f"⚠️ Error checking upload status: {e}")
+                    handle_browser_error(e, "检查上传状态时")
                     time.sleep(60)
             
             print(f"⚠️ Upload monitoring timeout after {max_wait_minutes} minutes")
             return False
             
         except Exception as e:
-            print(f"❌ Error monitoring upload: {e}")
+            handle_browser_error(e, "监控上传过程时")
             return False
 
     def monitor_form_completion(self, max_wait_minutes=10):
@@ -697,7 +734,7 @@ class XiaohongshuSelenium:
                     time.sleep(5)
                     
                 except Exception as e:
-                    print(f"⚠️ Error checking form completion: {e}")
+                    handle_browser_error(e, "检查表单完成状态时")
                     time.sleep(5)
             
             print(f"⚠️ Form completion monitoring timeout after {max_wait_minutes} minutes")
@@ -705,7 +742,7 @@ class XiaohongshuSelenium:
             return self.monitor_upload_and_publish()
             
         except Exception as e:
-            print(f"❌ Error monitoring form completion: {e}")
+            handle_browser_error(e, "监控表单完成过程时")
             return False
     
     def run_hybrid_upload(self, video_path, title, description):
@@ -731,7 +768,8 @@ class XiaohongshuSelenium:
             return True
             
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            handle_browser_error(e, "上传过程")
+            return False
             return False
     
     def run_upload_process(self, video_path, title, description, headless=False):
@@ -766,7 +804,7 @@ class XiaohongshuSelenium:
             return success
             
         except Exception as e:
-            print(f"❌ Upload process failed: {e}")
+            handle_browser_error(e, "上传过程")
             return False
         
         finally:

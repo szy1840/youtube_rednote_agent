@@ -17,9 +17,36 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 import random
+
+def is_browser_window_closed_error(error: Exception) -> bool:
+    """
+    Check if the error is related to browser window being closed by user
+    """
+    error_str = str(error).lower()
+    browser_closed_indicators = [
+        'no such window',
+        'target window already closed',
+        'web view not found',
+        'window was closed',
+        'chrome not reachable',
+        'session deleted',
+        'invalid session id'
+    ]
+    
+    return any(indicator in error_str for indicator in browser_closed_indicators)
+
+def handle_browser_error(error: Exception, context: str = "") -> None:
+    """
+    Handle browser-related errors with appropriate user-friendly messages
+    """
+    if is_browser_window_closed_error(error):
+        print(f"🔄 用户关闭了浏览器窗口，程序正常退出")
+        print(f"💡 提示：如需继续操作，请重新运行程序")
+    else:
+        print(f"⚠️ {context} 发生错误: {error}")
 
 def sanitize_for_chromedriver(text: str) -> str:
     """Removes non-BMP characters that crash ChromeDriver on Windows."""
@@ -118,7 +145,7 @@ def handle_logout_and_relogin(driver):
             time.sleep(10)  # Check every 10 seconds
             
         except Exception as e:
-            print(f"❌ Error checking login status: {e}")
+            handle_browser_error(e, "检查登录状态时")
             time.sleep(5)
     
     print(f"❌ Timeout waiting for manual login after {max_wait_minutes} minutes")
@@ -158,7 +185,7 @@ def check_login_and_navigate(driver):
             return False
         
     except Exception as e:
-        print(f"❌ Navigation failed: {e}")
+        handle_browser_error(e, "导航到小红书页面时")
         return False
 
 def switch_to_video_via_image_tab(driver):
@@ -209,7 +236,7 @@ def switch_to_video_via_image_tab(driver):
             return True
             
     except Exception as e:
-        print(f"An unexpected error occurred while switching tabs: {e}")  # Match working print format
+        handle_browser_error(e, "切换标签页时")
         return False
 
 def upload_video_human_like(driver, video_path):
@@ -333,7 +360,7 @@ def upload_video_human_like(driver, video_path):
         return True
         
     except Exception as e:
-        print(f"❌ Human-like upload failed: {e}")
+        handle_browser_error(e, "人性化上传视频时")
         print("🔄 Falling back to traditional method...")
         return upload_video_traditional(driver, video_path)
 
@@ -390,7 +417,7 @@ def upload_video_with_keyboard_fallback(driver, video_path):
         return True
         
     except Exception as e:
-        print(f"❌ Keyboard method failed: {e}")
+        handle_browser_error(e, "键盘导航上传时")
         return False
 
 def upload_video_traditional(driver, video_path):
@@ -410,7 +437,7 @@ def upload_video_traditional(driver, video_path):
         return True
         
     except Exception as e:
-        print(f"❌ Traditional upload failed: {e}")
+        handle_browser_error(e, "传统上传方法时")
         return False
 
 # Keep the new human-like method as the main one
@@ -552,7 +579,7 @@ def fill_content(driver, title, description):
         return True
         
     except Exception as e:
-        print(f"❌ Content filling failed: {e}")
+        handle_browser_error(e, "填写内容时")
         driver.save_screenshot("fill_content_error.png")
         print("   Screenshot of the error page saved as fill_content_error.png")
         return False
@@ -697,7 +724,7 @@ def publish_post(driver):
         return True
         
     except Exception as e:
-        print(f"❌ Publishing failed: {e}")
+        handle_browser_error(e, "发布帖子时")
         driver.save_screenshot("publish_error.png")
         return False
 
@@ -741,7 +768,7 @@ def create_video_post(title, description, video_path, user_data_dir=None, headle
         return True
         
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        handle_browser_error(e, "视频发布自动化过程")
         return False
     finally:
         print("🔒 Closing browser...")

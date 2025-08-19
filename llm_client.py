@@ -71,45 +71,19 @@ class LLMClient:
                 error_message=error_msg
             )
     
-    async def summarize_video_content(self, english_subtitle_text: str, 
-                                    video_title: str = "", 
-                                    video_url: str = "") -> VideoSummaryContent:
-        """
-        Legacy method: Analyze English subtitle text and generate Chinese title and description for Xiaohongshu
-        Uses OpenAI only for Xiaohongshu content generation (no local LLM fallback)
-        """
-        logging.info(f"🔍 Starting video content summarization with OpenAI")
-        logging.info(f"📝 Subtitle text length: {len(english_subtitle_text)} characters")
-        logging.info(f"🎬 Video title: {video_title}")
-        
-        try:
-            # Use OpenAI directly for Xiaohongshu content generation
-            result = await self._summarize_with_openai(english_subtitle_text, video_title, video_url)
-            logging.info("✅ Successfully used OpenAI for Xiaohongshu content generation")
-            return result
-            
-        except Exception as e:
-            error_msg = str(e)
-            logging.error(f"❌ OpenAI summarization failed: {error_msg}")
-            
-            return VideoSummaryContent(
-                title="视频处理失败",
-                description=f"抱歉，视频内容总结失败。错误：{error_msg}",
-                confidence=0.0,
-                is_uncertain=True,
-                error_message=error_msg
-            )
+
     
     async def _generate_xiaohongshu_content_with_openai(self, chinese_text: str, video_title: str, video_url: str) -> VideoSummaryContent:
         """Generate Xiaohongshu content from Chinese subtitle text"""
         
-        prompt = f"""你是资深小红书自媒体编辑。请基于以下YouTube视频的中文字幕内容（已翻译），为小红书创作优质内容。
+        
+        prompt = f"""你是资深小红书自媒体编辑，也精通创业、商业、科技、AI。请基于以下视频的字幕内容，创作小红书内容。
 
 原视频标题：{video_title}
 视频链接：{video_url}
 
 中文字幕内容：
-{chinese_text[:4000]}  # Limit to prevent token overflow
+{chinese_text[:6000]}  # Limit to prevent token overflow
 
 任务要求：
 1. **中文标题**：创作一个吸引眼球的中文标题（20字以内），要有情感共鸣和话题性
@@ -118,8 +92,9 @@ class LLMClient:
    - 适当添加emoji表情
    - 要有话题感和互动性
    - 突出重点内容和亮点
-   - 描述长度控制在100-800字之间
-   - 可以适当添加相关话题标签
+   - 描述长度控制在100-600字之间
+   - 在生成的文案后，添加一段内容：评论区扣【666】，领取我的独家硬核笔记文档和高能思维导图
+   - 最后可以适当添加相关引流话题标签
 
 请用以下JSON格式回复：
 {{
@@ -155,54 +130,7 @@ class LLMClient:
             logging.error(f"❌ OpenAI request failed: {e}")
             raise
     
-    async def _summarize_with_openai(self, english_text: str, video_title: str, video_url: str) -> VideoSummaryContent:
-        """Use OpenAI for video content summarization"""
-        
-        prompt = f"""你是精通商业、科技、AI创业的创业导师，也精通小红书文案编辑。请基于以下视频的字幕内容，创作小红书创作内容。
 
-原视频标题：{video_title}
-视频链接：{video_url}
-
-英文字幕内容：
-{english_text}
-
-要求：
-请根据视频内容，创作小红书标题和文案。要符合小红书用户喜好，吸引人，特别标题需要引流。
-
-
-请用以下JSON格式回复：
-{{
-  "title": "标题",
-  "description": "文案",
-  "confidence": 0.95
-}}"""
-
-        try:
-            logging.info(f"🤖 Sending request to OpenAI ChatGPT...")
-            logging.info(f"📋 Model: {settings.chatgpt_model}")
-            
-            response = await self.openai_client.chat.completions.create(
-                model=settings.chatgpt_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=settings.chatgpt_max_tokens,
-                timeout=settings.chatgpt_timeout,
-                temperature=0.7
-            )
-            
-            content = response.choices[0].message.content
-            logging.info(f"📨 OpenAI response received ({len(content)} characters)")
-            logging.debug(f"📨 Full OpenAI response: {content}")
-            
-            return self._parse_llm_response(content)
-            
-        except Exception as e:
-            logging.error(f"❌ OpenAI request failed: {e}")
-            raise
     
     def _parse_llm_response(self, content: str) -> VideoSummaryContent:
         """Parse LLM response and extract title and description"""
