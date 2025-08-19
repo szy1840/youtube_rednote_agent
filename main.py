@@ -668,12 +668,16 @@ class VideoProcessor:
             # Step 4.5: Generate learning notes from Chinese text
             logging.info("📝 Generating learning notes from video content...")
             try:
-                notes_file_path = self.note_generator.generate_notes_from_text(
+                notes_files = self.note_generator.generate_notes_from_text(
                     text=chinese_text,
                     video_title=video_title,
                     output_path="processed_videos/notes"
                 )
-                logging.info(f"✅ Learning notes generated and saved to: {notes_file_path}")
+                logging.info(f"✅ Learning notes generated and saved to:")
+                logging.info(f"   📄 Markdown: {notes_files['markdown']}")
+                logging.info(f"   📊 JSON: {notes_files['json']}")
+                logging.info(f"   📝 DOCX: {notes_files['docx']}")
+                notes_file_path = notes_files['markdown']  # 保持向后兼容
             except Exception as e:
                 logging.error(f"❌ Failed to generate learning notes: {e}")
                 # Don't fail the entire process if note generation fails
@@ -735,7 +739,16 @@ class VideoProcessor:
             content_file_path = output_dir / filename
             
             # Prepare content
-            notes_info = f"\n                        Learning Notes: {notes_file_path}" if notes_file_path else "\n                        Learning Notes: Not generated"
+            if notes_file_path:
+                notes_dir = Path(notes_file_path).parent
+                notes_stem = Path(notes_file_path).stem
+                docx_file = notes_dir / f"{notes_stem}.docx"
+                notes_info = f"""
+                        Learning Notes (Markdown): {notes_file_path}
+                        Learning Notes (DOCX): {docx_file}
+                        Learning Notes (JSON): {notes_dir / f"{notes_stem}.json"}"""
+            else:
+                notes_info = "\n                        Learning Notes: Not generated"
             
             content = f"""=== Xiaohongshu Content for Manual Posting ===
                         Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}

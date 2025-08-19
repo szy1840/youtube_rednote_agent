@@ -11,6 +11,7 @@ import json
 import re
 from pathlib import Path
 from config import settings
+from pandoc_converter import PandocConverter
 
 class NoteGenerator:
     """笔记生成器"""
@@ -26,6 +27,7 @@ class NoteGenerator:
         if self.api_key:
             openai.api_key = self.api_key
         self.logger = logging.getLogger(__name__)
+        self.pandoc_converter = PandocConverter()
     
     def generate_learning_notes(self, 
                                transcription: Dict, 
@@ -128,8 +130,8 @@ class NoteGenerator:
 1. 使用Markdown格式
 2. 在讲述具体案例之前，提供相关背景信息，帮助读者建立认知框架
 3. 使用引用格式(>)适当加入相关知识、观点来帮助理解和深化内容
-4. 用斜体格式模拟笔记作者的思考、提问并模拟导师的回答
-   - 格式：*Q：问题内容*  
+4. 适当用斜体模拟笔记作者的思考、提问并模拟导师的回答
+   - 格式：*Q：问题内容*
    - 格式：*A：回答内容*
    - 问题和回答都要有深度、有启发性、有针对性，避免模板化
 
@@ -138,7 +140,7 @@ class NoteGenerator:
 6. 根据视频标题生成笔记的主标题，格式为：`# {title}`
 
 
-请为视频观看者生成一份结构清晰、内容丰富的Markdown学习笔记。
+请为视频观看者生成一份内容丰富的Markdown学习笔记。
 """
         
         return prompt
@@ -168,15 +170,41 @@ class NoteGenerator:
     def _parse_notes_response(self, response: str) -> Dict:
         """解析GPT响应"""
         try:
+            # 清理代码块标记
+            cleaned_response = self._clean_markdown_code_blocks(response)
+            
             return {
-                "content": response,
-                "sections": self._extract_sections(response),
-                "keywords": self._extract_keywords(response),
-                "backgrounds": self._extract_background_info(response)
+                "content": cleaned_response,
+                "sections": self._extract_sections(cleaned_response),
+                "keywords": self._extract_keywords(cleaned_response),
+                "backgrounds": self._extract_background_info(cleaned_response)
             }
         except Exception as e:
             self.logger.error(f"响应解析失败: {e}")
             return {"content": response, "sections": [], "keywords": [], "backgrounds": []}
+    
+    def _clean_markdown_code_blocks(self, content: str) -> str:
+        """清理Markdown代码块标记"""
+        try:
+            # 移除开头的代码块标记
+            if content.startswith("```markdown"):
+                content = content[11:]  # 移除 ```markdown
+            elif content.startswith("```"):
+                content = content[3:]   # 移除 ```
+            
+            # 移除结尾的代码块标记
+            if content.endswith("```"):
+                content = content[:-3]  # 移除结尾的 ```
+            
+            # 移除开头和结尾的空白字符
+            content = content.strip()
+            
+            self.logger.info("✅ 已清理Markdown代码块标记")
+            return content
+            
+        except Exception as e:
+            self.logger.warning(f"清理代码块标记失败: {e}")
+            return content
     
     def _extract_sections(self, content: str) -> List[str]:
         """提取章节标题"""
@@ -216,17 +244,30 @@ class NoteGenerator:
                 else:
                     filename = "learning_notes.md"
             
+            # 获取Markdown内容
+            markdown_content = notes.get("markdown") or notes.get("json", {}).get("content") or notes.get("content", "")
+            
             # 保存Markdown文件
             markdown_path = output_dir / filename
             with open(markdown_path, "w", encoding="utf-8") as f:
-                # 优先使用markdown字段，如果没有则使用json.content，最后使用content
-                markdown_content = notes.get("markdown") or notes.get("json", {}).get("content") or notes.get("content", "")
                 f.write(markdown_content)
             
             # 保存JSON文件（包含元数据）
             json_path = output_dir / f"{Path(filename).stem}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(notes, f, ensure_ascii=False, indent=2)
+            
+            # 生成DOCX文件
+            docx_filename = f"{Path(filename).stem}.docx"
+            docx_path = output_dir / docx_filename
+            try:
+                self.pandoc_converter.convert_markdown_string_to_docx(
+                    markdown_content=markdown_content,
+                    output_path=str(docx_path)
+                )
+                self.logger.info(f"DOCX文件已生成: {docx_path}")
+            except Exception as e:
+                self.logger.warning(f"DOCX转换失败: {e}")
             
             self.logger.info(f"笔记已保存到: {markdown_path}")
             return str(markdown_path)
@@ -235,7 +276,7 @@ class NoteGenerator:
             self.logger.error(f"笔记保存失败: {e}")
             raise
     
-    def generate_notes_from_text(self, text: str, video_title: str = "", output_path: str = "notes") -> str:
+    def generate_notes_from_text(self, text: str, video_title: str = "", output_path: str = "notes") -> Dict[str, str]:
         """
         从文本内容生成学习笔记的便捷方法
         
@@ -245,7 +286,7 @@ class NoteGenerator:
             output_path: 输出路径
             
         Returns:
-            str: 保存的文件路径
+            Dict[str, str]: 包含各种格式文件路径的字典
         """
         try:
             # 构造转录数据格式
@@ -259,7 +300,16 @@ class NoteGenerator:
             notes = self.generate_learning_notes(transcription, video_title, "markdown")
             
             # 保存到文件
-            return self.save_notes_to_file(notes, output_path, video_title)
+            markdown_path = self.save_notes_to_file(notes, output_path, video_title)
+            
+            # 构造返回结果
+            result = {
+                "markdown": markdown_path,
+                "json": str(Path(markdown_path).parent / f"{Path(markdown_path).stem}.json"),
+                "docx": str(Path(markdown_path).parent / f"{Path(markdown_path).stem}.docx")
+            }
+            
+            return result
             
         except Exception as e:
             self.logger.error(f"从文本生成笔记失败: {e}")
