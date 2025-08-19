@@ -196,6 +196,57 @@ check_ollama() {
     done
 }
 
+# 检查并安装VideoLingo
+check_videolingo() {
+    log_info "检查VideoLingo..."
+    
+    # 检查VideoLingo是否已安装
+    if command_exists videolingo; then
+        videolingo_version=$(videolingo --version 2>/dev/null || echo "已安装")
+        log_success "✅ VideoLingo已安装: $videolingo_version"
+        return 0
+    fi
+    
+    # 检查conda环境
+    if command_exists conda; then
+        log_info "检测到conda，尝试在conda环境中安装VideoLingo..."
+        
+        # 检查是否存在videolingo环境
+        if conda env list | grep -q "videolingo"; then
+            log_success "✅ 找到videolingo conda环境"
+            
+            # 激活环境并检查VideoLingo
+            if conda run -n videolingo videolingo --help >/dev/null 2>&1; then
+                log_success "✅ VideoLingo在conda环境中可用"
+                return 0
+            else
+                log_info "在videolingo环境中安装VideoLingo..."
+                conda run -n videolingo pip install videolingo
+                log_success "✅ VideoLingo在conda环境中安装完成"
+                return 0
+            fi
+        else
+            log_info "创建videolingo conda环境..."
+            conda create -n videolingo python=3.9 -y
+            conda run -n videolingo pip install videolingo
+            log_success "✅ VideoLingo conda环境创建并安装完成"
+            return 0
+        fi
+    fi
+    
+    # 如果没有conda，尝试直接安装
+    log_warning "❌ VideoLingo未安装，正在尝试直接安装..."
+    if python3 -m pip install videolingo; then
+        log_success "✅ VideoLingo安装完成"
+    else
+        log_error "❌ VideoLingo安装失败"
+        log_info "请手动安装VideoLingo:"
+        echo "   方法1: pip install videolingo"
+        echo "   方法2: conda create -n videolingo python=3.9 && conda activate videolingo && pip install videolingo"
+        return 1
+    fi
+}
+
 # 检查并安装Chrome
 check_chrome() {
     if command_exists google-chrome; then
@@ -294,6 +345,7 @@ verify_installation() {
     local tools=(
         ["pandoc"]="Pandoc"
         ["ollama"]="Ollama"
+        ["videolingo"]="VideoLingo"
         ["google-chrome"]="Chrome"
     )
     
@@ -341,6 +393,8 @@ show_usage() {
     echo "- 下载模型: ollama pull <model_name>"
     echo "- 运行模型: ollama run <model_name>"
     echo "- 查看已安装模型: ollama list"
+    echo "- 启动VideoLingo: videolingo"
+    echo "- 使用VideoLingo conda环境: conda activate videolingo"
     echo ""
     echo "📚 更多信息请查看 README.md"
     echo ""
@@ -367,6 +421,7 @@ main() {
     check_python_dependencies
     check_pandoc
     check_ollama
+    check_videolingo
     check_chrome
     check_project_directories
     check_environment

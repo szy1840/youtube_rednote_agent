@@ -70,69 +70,251 @@
 
 ## 🛠️ 安装步骤
 
-### 1. 克隆项目
+### 1. 环境准备
+
+#### 1.1 系统要求确认
+确保您的系统满足以下要求：
+- **操作系统**: macOS (推荐) 或 Linux
+- **Python**: 3.8 或更高版本
+- **Chrome浏览器**: 最新版本
+- **内存**: 至少 8GB RAM (推荐 16GB+)
+- **存储空间**: 至少 10GB 可用空间
+
+#### 1.2 检查Python版本
 ```bash
-git clone <repository-url>
-cd youtube_rednote_agent
+python3 --version
+# 或
+python --version
 ```
 
-### 2. 安装依赖
+如果版本低于3.8，请先升级Python。
+
+### 2. 克隆项目
 ```bash
+# 克隆项目到本地
+git clone <repository-url>
+cd youtube_rednote_agent
+
+# 验证项目结构
+ls -la
+```
+
+### 3. 安装Python依赖
+
+#### 3.1 创建虚拟环境 (推荐)
+```bash
+# 创建虚拟环境
+python3 -m venv venv
+
+# 激活虚拟环境
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
+```
+
+#### 3.2 安装依赖包
+```bash
+# 升级pip
+pip install --upgrade pip
+
+# 安装项目依赖
 pip install -r requirements.txt
 ```
 
-### 3. 配置环境
+### 4. 安装外部工具
 
-#### 3.1 复制配置文件模板
+#### 4.1 安装VideoLingo
+VideoLingo是视频转录和字幕生成工具，需要单独安装：
+
+```bash
+# 方法1: 使用conda (推荐)
+conda create -n videolingo python=3.9
+conda activate videolingo
+pip install videolingo
+
+# 方法2: 直接安装
+pip install videolingo
+```
+
+#### 4.2 安装Ollama (本地LLM服务)
+```bash
+# macOS
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 启动Ollama服务
+ollama serve
+
+# 下载模型 (在另一个终端中)
+ollama pull qwen2.5-coder:32b
+```
+
+#### 4.3 安装ChromeDriver
+```bash
+# 使用webdriver-manager自动管理 (推荐)
+pip install webdriver-manager
+
+# 或手动下载ChromeDriver
+# 访问: https://chromedriver.chromium.org/
+# 下载对应Chrome版本的ChromeDriver
+```
+
+### 5. 配置环境
+
+#### 5.1 复制配置文件
 ```bash
 # 复制配置文件模板
 cp config.example.py config.py
 ```
 
-#### 3.2 编辑配置文件
-编辑 `config.py` 文件，设置以下必要参数：
+#### 5.2 编辑配置文件
+使用您喜欢的编辑器打开 `config.py` 文件：
+
+```bash
+# 使用VS Code
+code config.py
+
+# 或使用vim
+vim config.py
+
+# 或使用nano
+nano config.py
+```
+
+#### 5.3 配置必要参数
+在 `config.py` 中设置以下参数：
 
 ```python
 # YouTube API设置
-youtube_playlist_id: str = "YOUR_PLAYLIST_ID"
+youtube_playlist_id: str = "YOUR_PLAYLIST_ID"  # 替换为您的播放列表ID
 
 # OpenAI API (用于内容生成)
-openai_api_key: str = "YOUR_OPENAI_API_KEY"
+openai_api_key: str = "YOUR_OPENAI_API_KEY"   # 替换为您的OpenAI API密钥
 
-# 邮箱设置
-smtp_user: str = "YOUR_GMAIL"
-smtp_password: str = "YOUR_APP_PASSWORD"
-user_email: str = "YOUR_EMAIL"
+# 邮箱设置 (Gmail)
+smtp_user: str = "YOUR_GMAIL@gmail.com"       # 您的Gmail地址
+smtp_password: str = "YOUR_APP_PASSWORD"      # Gmail应用专用密码
+user_email: str = "YOUR_EMAIL@gmail.com"      # 接收通知的邮箱
 
-# 路径设置
-videolingo_path: str = "/path/to/VideoLingo"
+# VideoLingo路径
+videolingo_path: str = "/path/to/VideoLingo"  # VideoLingo安装路径
 ```
 
-> **重要提醒**: 请确保复制 `config.example.py` 为 `config.py` 后再进行编辑，避免直接修改模板文件。配置文件包含敏感信息，请妥善保管。
-> 
-> **路径说明**: `download_folder_path` 已设置为相对路径 `"downloads/input"`，会自动指向项目根目录下的 `downloads/input` 文件夹，无需手动配置。
+> **重要提醒**: 
+> - 请确保复制 `config.example.py` 为 `config.py` 后再进行编辑
+> - 配置文件包含敏感信息，请妥善保管，不要提交到版本控制
+> - `download_folder_path` 已设置为相对路径，会自动指向项目目录
 
-### 4. 配置OAuth2认证
-1. 配置YouTube Data API v3，下载Google OAuth2客户端配置文件
-2. 重命名为 `client_secret_*.json`
-3. 首次运行时会引导完成OAuth2认证
+### 6. 配置YouTube API
 
+#### 6.1 创建Google Cloud项目
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建新项目或选择现有项目
+3. 启用 YouTube Data API v3
 
-## 🚀 使用方法
+#### 6.2 创建OAuth2凭据
+1. 在Google Cloud Console中，转到"凭据"页面
+2. 创建OAuth2客户端ID
+3. 下载JSON配置文件
+4. 重命名为 `client_secret_*.json` 并放置在项目根目录
 
-### 手动运行
+### 7. 配置Chrome浏览器
+
+#### 7.1 创建Chrome配置文件
 ```bash
+# 创建Chrome配置文件目录
+mkdir -p chrome_profiles/auto
+mkdir -p chrome_profiles/manual
+```
+
+#### 7.2 手动登录小红书账号
+1. 启动Chrome浏览器
+2. 使用 `--user-data-dir` 参数指定配置文件路径
+3. 登录小红书账号并保持登录状态
+
+### 8. 验证安装
+
+#### 8.1 测试基本功能
+```bash
+# 测试Python依赖
+python -c "import selenium, yt_dlp, pydantic; print('依赖安装成功')"
+
+# 测试VideoLingo
+videolingo --help
+
+# 测试Ollama
+ollama list
+```
+
+#### 8.2 运行测试
+```bash
+# 运行内容解析测试
+python test_content_parser.py
+```
+
+### 9. 首次运行
+
+#### 9.1 完成OAuth2认证
+```bash
+# 首次运行会引导完成YouTube API认证
 python main.py
 ```
 
-### 定时任务设置
+按照提示完成OAuth2认证流程。
+
+#### 9.2 验证配置
+检查以下文件是否正确生成：
+- `youtube_token.json` - YouTube认证令牌
+- `processed_videos.json` - 处理记录
+- `video_attempts.json` - 尝试记录
+
+### 10. 设置定时任务 (可选)
+
+#### 10.1 配置cron任务
+```bash
+# 复制cron脚本模板
+cp cron_job.example.sh cron_job.sh
+
+# 编辑cron脚本，设置正确的路径
+vim cron_job.sh
+
+# 设置执行权限
+chmod +x cron_job.sh
+```
+
+#### 10.2 添加到crontab
 ```bash
 # 编辑crontab
 crontab -e
 
 # 添加定时任务 (每小时执行一次)
 0 * * * * /path/to/youtube_rednote_agent/cron_job.sh
+
+# 查看crontab
+crontab -l
 ```
+
+## 🚀 快速开始
+
+安装完成后，您可以：
+
+### 手动运行
+```bash
+# 激活虚拟环境 (如果使用)
+source venv/bin/activate
+
+# 运行主程序
+python main.py
+```
+
+### 监控运行状态
+```bash
+# 检查系统状态
+python monitor_running.py
+```
+
+### 查看日志
+程序运行时会生成详细的日志，您可以在控制台查看处理进度和状态信息。
 
 ## 📁 项目结构
 

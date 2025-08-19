@@ -12,21 +12,21 @@ class Settings(pydantic_settings.BaseSettings):
     video_quality: str = "medium"  # yt-dlp quality setting
     
     # YouTube API settings (using OAuth2 authentication)
-    youtube_playlist_id: str = "YOUR_YOUTUBE_PLAYLIST_ID"  # 需要替换为实际的YouTube播放列表ID
+    youtube_playlist_id: str = ""  # 需要替换为实际的YouTube播放列表ID
     
     
     # ChatGPT for summarization (fallback if needed)
-    openai_api_key: str = "YOUR_OPENAI_API_KEY"  # 需要替换为实际的OpenAI API密钥
+    openai_api_key: str = ""  # 需要替换为实际的OpenAI API密钥
     chatgpt_model: str = "gpt-4o"
-    chatgpt_max_tokens: int = 1000
+    chatgpt_max_tokens: int = 4000
     chatgpt_timeout: int = 60  # seconds
 
     # Email credentials (same as screenshot processor)
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_user: str = "your_email@gmail.com"  # 需要替换为实际的Gmail地址
-    smtp_password: pydantic.SecretStr = "YOUR_GMAIL_APP_PASSWORD"  # 需要替换为Gmail应用密码
-    user_email: str = "your_email@gmail.com"  # 需要替换为实际的Email地址
+    smtp_user: str = "szy1840.test@gmail.com"  # 需要替换为实际的Gmail地址
+    smtp_password: pydantic.SecretStr = ""  # 需要替换为Gmail应用密码
+    user_email: str = ""  # 需要替换为实际的Email地址
 
     # Xiaohongshu posting settings (temporarily disabled for testing)
     xhs_auto_post: bool = True
@@ -58,24 +58,26 @@ class Settings(pydantic_settings.BaseSettings):
     max_retries: int = 3  # Same retry logic as screenshot processor
     
     # Python executable path (updated for macOS maker environment)
-    python_executable: str = "/path/to/your/python"  # 更新为当前系统的Python路径
+    python_executable: str = "/opt/anaconda3/bin/python"  # 更新为当前系统的Python路径
     
     # VideoLingo settings
-    videolingo_path: str = "/path/to/VideoLingo"  # VideoLingo 安装路径
+    videolingo_path: str = "/Users/mac/my_programs/tools/VideoLingo"  # VideoLingo 安装路径
     videolingo_port: int = 8501  # VideoLingo Web UI 端口（Streamlit 默认端口）
-    
+    # VideoLingo language settings
+    target_language: str = "zh"  # 目标语言：中文
     # Excel file path for VideoLingo
-    videolingo_excel_path: str = "/path/to/VideoLingo/batch/tasks_setting.xlsx"
+    videolingo_excel_path: str = "/Users/mac/my_programs/tools/VideoLingo/batch/tasks_setting.xlsx"
+    
     
     # Test video path
-    test_video_path: str = "/path/to/test_video.mp4"
+    test_video_path: str = "/Users/mac/test_video.mp4"
     
     # Extension path
     xiaohongshu_extension_path: str = "xiaohongshu_extension"
     
     # Cron job settings
-    cron_log_path: str = "/path/to/cron_log.txt"
-    project_root_path: str = "/path/to/project/root"
+    cron_log_path: str = "/Users/mac/mydrive/code/maker/youtube_video_processor/cron_log.txt"
+    project_root_path: str = "/Users/mac/my_programs/ai/youtube_rednote_agent"
     
     @property
     def processed_folder_path(self) -> str:
