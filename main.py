@@ -30,6 +30,7 @@ from config import settings
 from email_helper import EmailHelper
 from llm_client import LLMClient
 from xiaohongshu_selenium import XiaohongshuSelenium
+from note_generator import NoteGenerator
 
 # Configure logging - output to console only (redirected to cron_log.txt by cron job)
 def setup_logging():
@@ -622,6 +623,7 @@ class VideoProcessor:
         self.videolingo_processor = VideoLingoProcessor()
         self.llm_client = LLMClient()
         self.email_helper = EmailHelper()
+        self.note_generator = NoteGenerator()
     
     async def process_single_video(self, video_info: Dict[str, Any]) -> bool:
         """Process a single video through the complete workflow"""
@@ -663,6 +665,20 @@ class VideoProcessor:
                 await self.send_error_notification(f"ChatGPT content generation failed: {content_result.error_message}", video_info)
                 return False
             
+            # Step 4.5: Generate learning notes from Chinese text
+            logging.info("📝 Generating learning notes from video content...")
+            try:
+                notes_file_path = self.note_generator.generate_notes_from_text(
+                    text=chinese_text,
+                    video_title=video_title,
+                    output_path="processed_videos/notes"
+                )
+                logging.info(f"✅ Learning notes generated and saved to: {notes_file_path}")
+            except Exception as e:
+                logging.error(f"❌ Failed to generate learning notes: {e}")
+                # Don't fail the entire process if note generation fails
+                notes_file_path = None
+            
             # Step 5: Get output video file
             output_video_path = self.videolingo_processor.get_output_video_path()
             if not output_video_path:
@@ -671,7 +687,7 @@ class VideoProcessor:
             
             # Step 6: Save content to text file for manual posting
             logging.info("💾 Saving generated content to text file...")
-            content_file_path = self.save_content_to_file(content_result, video_info, output_video_path)
+            content_file_path = self.save_content_to_file(content_result, video_info, output_video_path, notes_file_path)
             if not content_file_path:
                 await self.send_error_notification(f"Failed to save content to file", video_info)
                 return False
@@ -695,7 +711,7 @@ class VideoProcessor:
                 logging.warning(f"⚠️ Error removing video from playlist: {e}, but continuing...")
             
             # Step 8: Send success notification
-            await self.send_success_notification(content_result, video_info, str(output_video_path), str(content_file_path))
+            await self.send_success_notification(content_result, video_info, str(output_video_path), str(content_file_path), notes_file_path)
             
             logging.info(f"🎉 Successfully processed video: {video_title}")
             return True
@@ -705,7 +721,7 @@ class VideoProcessor:
             await self.send_error_notification(f"Unexpected error: {str(e)}", video_info)
             return False
     
-    def save_content_to_file(self, content_result, video_info: Dict[str, Any], output_video_path: Path) -> Optional[Path]:
+    def save_content_to_file(self, content_result, video_info: Dict[str, Any], output_video_path: Path, notes_file_path: str = None) -> Optional[Path]:
         """Save generated title and description to a text file for manual posting"""
         try:
             # Create output directory if it doesn't exist
@@ -719,12 +735,14 @@ class VideoProcessor:
             content_file_path = output_dir / filename
             
             # Prepare content
+            notes_info = f"\n                        Learning Notes: {notes_file_path}" if notes_file_path else "\n                        Learning Notes: Not generated"
+            
             content = f"""=== Xiaohongshu Content for Manual Posting ===
                         Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
                         Original Video Title: {video_info['title']}
                         YouTube URL: {video_info['url']}
-                        Output Video Path: {output_video_path}
+                        Output Video Path: {output_video_path}{notes_info}
 
                         === GENERATED TITLE ===
                         {content_result.title}
@@ -738,6 +756,7 @@ class VideoProcessor:
                         3. Copy and paste the title above
                         4. Copy and paste the description above
                         5. Publish the post
+                        6. Check the learning notes file for detailed study materials
 
                         === END ===
                         """
@@ -753,10 +772,12 @@ class VideoProcessor:
             logging.error(f"❌ Error saving content to file: {e}")
             return None
     
-    async def send_success_notification(self, content_result, video_info: Dict[str, Any], video_path: str, content_file_path: str):
+    async def send_success_notification(self, content_result, video_info: Dict[str, Any], video_path: str, content_file_path: str, notes_file_path: str = None):
         """Send success email notification"""
         try:
             # Include content file path in the notification
+            notes_info = f"\n                                    4. Learning notes available at: {notes_file_path}" if notes_file_path else ""
+            
             enhanced_description = f"""Generated Content Saved To: {content_file_path}
 
                                     === GENERATED TITLE ===
@@ -768,7 +789,7 @@ class VideoProcessor:
                                     === MANUAL POSTING INSTRUCTIONS ===
                                     1. Open the content file at: {content_file_path}
                                     2. Follow the instructions in the file to manually post to Xiaohongshu
-                                    3. The processed video is available at: {video_path}
+                                    3. The processed video is available at: {video_path}{notes_info}
                                     """
             
             self.email_helper.send_video_notification(
